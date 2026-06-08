@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const db = require('./db');
+const store = require('./store');
 const config = require('./config');
 const { randomId, safeEqual, clientIp } = require('./util');
 
@@ -32,18 +32,20 @@ function unsignSid(signed) {
   return safeEqual(mac, expected) ? sid : null;
 }
 
-function createSession(adminId, req) {
+async function createSession(adminId, req) {
   const sid = randomId(24);
   const csrf = randomId(24);
   const now = Date.now();
-  db.prepare(
-    'INSERT INTO sessions (id, admin_id, csrf_token, expires_at, created_at, ip, user_agent) VALUES (?,?,?,?,?,?,?)'
-  ).run(sid, adminId, csrf, now + config.sessionTtlMs, now, clientIp(req), (req.get('user-agent') || '').slice(0, 300));
+  await store.createSession({
+    id: sid, admin_id: adminId, csrf_token: csrf,
+    expires_at: now + config.sessionTtlMs, created_at: now,
+    ip: clientIp(req), user_agent: (req.get('user-agent') || '').slice(0, 300),
+  });
   return { sid, csrf };
 }
 
-function destroySession(sid) {
-  db.prepare('DELETE FROM sessions WHERE id = ?').run(sid);
+async function destroySession(sid) {
+  await store.deleteSession(sid);
 }
 
 function setSessionCookie(res, req, sid) {
@@ -61,25 +63,29 @@ function clearSessionCookie(res) {
 }
 
 // Populates req.admin + req.session if a valid session cookie is present.
-function loadSession(req, res, next) {
+async function loadSession(req, res, next) {
   req.admin = null;
   req.session = null;
-  const signed = req.cookies?.[COOKIE_NAME];
-  const sid = unsignSid(signed);
-  if (!sid) return next();
+  try {
+    const signed = req.cookies?.[COOKIE_NAME];
+    const sid = unsignSid(signed);
+    if (!sid) return next();
 
-  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sid);
-  if (!session) return next();
-  if (session.expires_at < Date.now()) {
-    destroySession(sid);
-    return next();
+    const session = await store.getSession(sid);
+    if (!session) return next();
+    if (session.expires_at < Date.now()) {
+      await destroySession(sid);
+      return next();
+    }
+    const admin = await store.getAdminById(session.admin_id);
+    if (!admin) return next();
+
+    req.admin = admin;
+    req.session = session;
+    next();
+  } catch (e) {
+    next(e);
   }
-  const admin = db.prepare('SELECT id, email, name, role FROM admins WHERE id = ?').get(session.admin_id);
-  if (!admin) return next();
-
-  req.admin = admin;
-  req.session = session;
-  next();
 }
 
 function requireAdmin(req, res, next) {
@@ -100,8 +106,8 @@ function requireCsrf(req, res, next) {
   next();
 }
 
-function cleanupExpiredSessions() {
-  db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now());
+async function cleanupExpiredSessions() {
+  await store.deleteExpiredSessions(Date.now());
 }
 
 module.exports = {

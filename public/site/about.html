@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About · County Government of Mandera Sign-In System</title>
+  <link rel="stylesheet" href="/static/site.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container bar">
+      <a class="brand" href="/"><span class="crest">CGM</span><span class="name">County Government of Mandera<small>Meeting Sign-In System</small></span></a>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Menu">☰</button>
+      <nav class="nav" id="nav">
+        <a href="/">Home</a><a href="/about">About</a><a href="/contact">Contact</a><a class="btn" href="/admin">Staff Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero" style="padding:3rem 0">
+    <div class="container"><h1 style="margin:0">About the platform</h1></div>
+  </section>
+
+  <section>
+    <div class="container prose">
+      <p>The Meeting Sign-In System is the official digital attendance platform of the <strong>County Government of Mandera</strong>. It replaces paper sign-in sheets with a secure, verifiable record of who attended county meetings, public participation forums, barazas, trainings and workshops.</p>
+
+      <h2>Why it exists</h2>
+      <p>Accurate attendance records support transparency, accountability and proper reporting across all county departments. Paper sheets are easy to lose, hard to verify and slow to compile. This platform produces tamper-resistant records that can be exported as official documents in seconds.</p>
+
+      <h2>How attendance is verified</h2>
+      <p>Every meeting can be <strong>geofenced</strong>: attendees are only able to sign in when they are physically within a set radius of the venue. The location check is performed on the county server — not trusted to the attendee's device — and entries with poor or suspicious GPS accuracy are flagged for review. Additional safeguards include optional passcodes, duplicate-prevention by email and device, rate limiting and a full audit log.</p>
+
+      <h2>Notifications</h2>
+      <p>When someone signs in, they can receive an instant <strong>SMS confirmation</strong> (via Africa's Talking) and an <strong>email confirmation</strong> (via Resend). Meeting owners can also be alerted to each new sign-in, so they always know who is in the room.</p>
+
+      <h2>Official records</h2>
+      <p>Attendance can be downloaded as a branded <strong>PDF</strong> or <strong>Word</strong> document carrying the county header, logo, venue and date, or as a <strong>CSV</strong> file for further analysis. Each document lists every attendee, the time they signed in, and their geofence verification status.</p>
+
+      <h2>Data protection</h2>
+      <p>Personal details collected during sign-in are used solely for attendance and county record-keeping. See our <a href="/privacy">Privacy Notice</a> for details, or <a href="/contact">contact us</a> with any questions.</p>
+
+      <p style="margin-top:2rem"><a class="btn" href="/admin">Staff Login</a></p>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="cols">
+        <div><h5>County Government of Mandera</h5><p>Official meeting attendance and sign-in platform.</p></div>
+        <div><h5>Links</h5><ul><li><a href="/">Home</a></li><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li></ul></div>
+        <div><h5>Contact</h5><ul><li>P.O. Box 13-70300</li><li>Mandera, Kenya</li><li><a href="mailto:info@mandera.go.ke">info@mandera.go.ke</a></li></ul></div>
+      </div>
+      <div class="copy">© <span id="year">2026</span> County Government of Mandera. All rights reserved.</div>
+    </div>
+  </footer>
+  <script src="/static/site.js"></script>
+</body>
+</html>

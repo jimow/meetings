@@ -43,11 +43,18 @@ function loadOrCreateSecrets() {
 }
 const secrets = loadOrCreateSecrets();
 
+const PORT = parseInt(process.env.PORT || '3000', 10);
+// An explicit BASE_URL always wins (recommended for production). When it is NOT
+// set, share links/QR codes are derived per-request from the actual domain the
+// request arrived on — so a deployed instance uses its real domain, not localhost.
+const explicitBaseUrl = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : null;
+
 const config = {
-  port: parseInt(process.env.PORT || '3000', 10),
-  // Public base URL used when building QR codes / shareable links.
-  // Set this to your real https origin in production (e.g. https://signin.acme.com)
-  baseUrl: (process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, ''),
+  port: PORT,
+  // Static fallback used for startup logs and contexts without a request.
+  baseUrl: explicitBaseUrl || `http://localhost:${PORT}`,
+  // null unless BASE_URL was explicitly provided.
+  explicitBaseUrl,
   dataDir: DATA_DIR,
   dbPath: path.join(DATA_DIR, 'meeting-signs.db'),
   sessionSecret: process.env.SESSION_SECRET || secrets.sessionSecret,

@@ -1,7 +1,8 @@
 'use strict';
 
 const crypto = require('crypto');
-const db = require('./db');
+const store = require('./store');
+const config = require('./config');
 
 const ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -22,11 +23,10 @@ function randomSlug(len = 7) {
   return out;
 }
 
-function uniqueSlug() {
+async function uniqueSlug() {
   for (let i = 0; i < 10; i++) {
     const slug = randomSlug();
-    const exists = db.prepare('SELECT 1 FROM meetings WHERE slug = ?').get(slug);
-    if (!exists) return slug;
+    if (!(await store.slugExists(slug))) return slug;
   }
   // Fall back to longer slug on the astronomically unlikely repeated collision.
   return randomSlug(12);
@@ -45,12 +45,31 @@ function clientIp(req) {
   return req.ip || req.connection?.remoteAddress || null;
 }
 
-function audit(action, { actor = null, target = null, detail = null, ip = null } = {}) {
-  try {
-    db.prepare(
-      'INSERT INTO audit_log (id, actor, action, target, detail, ip, created_at) VALUES (?,?,?,?,?,?,?)'
-    ).run(randomId(), actor, action, target, typeof detail === 'string' ? detail : JSON.stringify(detail), ip, Date.now());
-  } catch { /* never let auditing break a request */ }
+// Public origin for share links / QR codes.
+//  - If BASE_URL is explicitly configured, always use it (authoritative).
+//  - Otherwise derive from the incoming request: real domain + scheme, honoring
+//    the reverse proxy (X-Forwarded-Proto/Host via Express 'trust proxy').
+// This means a deployed instance produces links on its actual domain, while
+// local runs produce localhost links — automatically.
+function publicBaseUrl(req) {
+  if (config.explicitBaseUrl) return config.explicitBaseUrl;
+  if (req) {
+    const host = req.get('x-forwarded-host') || req.get('host');
+    if (host) {
+      const proto = (req.get('x-forwarded-proto') || req.protocol || 'http').split(',')[0].trim();
+      return `${proto}://${host}`.replace(/\/$/, '');
+    }
+  }
+  return config.baseUrl;
 }
 
-module.exports = { randomId, randomSlug, uniqueSlug, safeEqual, clientIp, audit };
+function audit(action, { actor = null, target = null, detail = null, ip = null } = {}) {
+  // Fire-and-forget: auditing must never block or break a request.
+  Promise.resolve(store.insertAudit({
+    id: randomId(), actor, action, target,
+    detail: detail == null || typeof detail === 'string' ? detail : JSON.stringify(detail),
+    ip, created_at: Date.now(),
+  })).catch(() => {});
+}
+
+module.exports = { randomId, randomSlug, uniqueSlug, safeEqual, clientIp, publicBaseUrl, audit };

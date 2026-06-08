@@ -54,6 +54,12 @@ db.exec(`
     require_unique_email INTEGER NOT NULL DEFAULT 1,
     limit_one_per_device INTEGER NOT NULL DEFAULT 1,
     collect_ip           INTEGER NOT NULL DEFAULT 1,
+    notify_attendee_email INTEGER NOT NULL DEFAULT 0,
+    notify_attendee_sms   INTEGER NOT NULL DEFAULT 0,
+    notify_owner_email    INTEGER NOT NULL DEFAULT 0,
+    notify_owner_sms      INTEGER NOT NULL DEFAULT 0,
+    owner_notify_email    TEXT NOT NULL DEFAULT '',
+    owner_notify_phone    TEXT NOT NULL DEFAULT '',
     fields_json          TEXT NOT NULL DEFAULT '[]',
     status               TEXT NOT NULL DEFAULT 'active',
     created_at           INTEGER NOT NULL,
@@ -99,6 +105,18 @@ db.exec(`
     FOREIGN KEY (owner_id) REFERENCES admins(id) ON DELETE CASCADE
   );
 
+  -- Public contact-form submissions (from the website).
+  CREATE TABLE IF NOT EXISTS contact_messages (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    email      TEXT NOT NULL,
+    phone      TEXT,
+    subject    TEXT,
+    message    TEXT NOT NULL,
+    ip         TEXT,
+    created_at INTEGER NOT NULL
+  );
+
   -- Lightweight audit log for security-relevant events.
   CREATE TABLE IF NOT EXISTS audit_log (
     id         TEXT PRIMARY KEY,
@@ -117,6 +135,17 @@ function columnExists(table, col) {
 }
 if (!columnExists('meetings', 'venue')) {
   db.exec(`ALTER TABLE meetings ADD COLUMN venue TEXT NOT NULL DEFAULT ''`);
+}
+const notifyCols = [
+  ['notify_attendee_email', "INTEGER NOT NULL DEFAULT 0"],
+  ['notify_attendee_sms', "INTEGER NOT NULL DEFAULT 0"],
+  ['notify_owner_email', "INTEGER NOT NULL DEFAULT 0"],
+  ['notify_owner_sms', "INTEGER NOT NULL DEFAULT 0"],
+  ['owner_notify_email', "TEXT NOT NULL DEFAULT ''"],
+  ['owner_notify_phone', "TEXT NOT NULL DEFAULT ''"],
+];
+for (const [col, def] of notifyCols) {
+  if (!columnExists('meetings', col)) db.exec(`ALTER TABLE meetings ADD COLUMN ${col} ${def}`);
 }
 
 module.exports = db;

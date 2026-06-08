@@ -244,12 +244,21 @@
       $('ed-unique-email').checked = m.requireUniqueEmail;
       $('ed-one-device').checked = m.limitOnePerDevice;
       $('ed-collect-ip').checked = m.collectIp;
+      $('ed-notify-att-email').checked = m.notifyAttendeeEmail;
+      $('ed-notify-att-sms').checked = m.notifyAttendeeSms;
+      $('ed-notify-own-email').checked = m.notifyOwnerEmail;
+      $('ed-notify-own-sms').checked = m.notifyOwnerSms;
+      $('ed-owner-email').value = m.ownerNotifyEmail || '';
+      $('ed-owner-phone').value = m.ownerNotifyPhone || '';
       (m.fields || []).forEach(addFieldRow);
     } else {
       $('editor-form').reset();
       $('ed-radius').value = 150; $('ed-accuracy').value = 100;
       $('ed-geofence').checked = true; $('ed-open').checked = true;
       $('ed-unique-email').checked = true; $('ed-one-device').checked = true; $('ed-collect-ip').checked = true;
+      $('ed-notify-att-email').checked = false; $('ed-notify-att-sms').checked = false;
+      $('ed-notify-own-email').checked = false; $('ed-notify-own-sms').checked = false;
+      $('ed-owner-email').value = ''; $('ed-owner-phone').value = '';
       // Sensible default fields
       addFieldRow({ key: 'full_name', label: 'Full name', type: 'text', required: true });
       addFieldRow({ key: 'email', label: 'Email', type: 'email', required: true });
@@ -299,6 +308,12 @@
       requireUniqueEmail: $('ed-unique-email').checked,
       limitOnePerDevice: $('ed-one-device').checked,
       collectIp: $('ed-collect-ip').checked,
+      notifyAttendeeEmail: $('ed-notify-att-email').checked,
+      notifyAttendeeSms: $('ed-notify-att-sms').checked,
+      notifyOwnerEmail: $('ed-notify-own-email').checked,
+      notifyOwnerSms: $('ed-notify-own-sms').checked,
+      ownerNotifyEmail: $('ed-owner-email').value,
+      ownerNotifyPhone: $('ed-owner-phone').value,
       fields: collectFieldRows(),
     };
     // Only send passcode if the user typed something (so blank keeps existing on edit).

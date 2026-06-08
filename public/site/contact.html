@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact · County Government of Mandera Sign-In System</title>
+  <link rel="stylesheet" href="/static/site.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container bar">
+      <a class="brand" href="/"><span class="crest">CGM</span><span class="name">County Government of Mandera<small>Meeting Sign-In System</small></span></a>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Menu">☰</button>
+      <nav class="nav" id="nav">
+        <a href="/">Home</a><a href="/about">About</a><a href="/contact">Contact</a><a class="btn" href="/admin">Staff Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero" style="padding:3rem 0">
+    <div class="container"><h1 style="margin:0">Contact us</h1><p style="margin:.5rem 0 0">Questions about the platform or a county meeting? Send us a message.</p></div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="grid grid-2" style="align-items:start">
+        <div class="card">
+          <h3>County offices</h3>
+          <div class="info-list" style="margin-top:1rem">
+            <div class="row"><span class="k">Address</span><span>P.O. Box 13-70300<br/>Mandera, Kenya</span></div>
+            <div class="row"><span class="k">Email</span><span><a href="mailto:info@mandera.go.ke">info@mandera.go.ke</a></span></div>
+            <div class="row"><span class="k">Hours</span><span>Mon–Fri, 8:00am – 5:00pm EAT</span></div>
+            <div class="row"><span class="k">Staff</span><span><a href="/admin">Staff login &amp; meeting management</a></span></div>
+          </div>
+        </div>
+
+        <div class="card form-card">
+          <h3>Send a message</h3>
+          <div id="contact-banner" class="banner hidden" style="margin-top:1rem"></div>
+          <form id="contact-form" style="margin-top:1rem">
+            <!-- honeypot -->
+            <div class="hp" aria-hidden="true"><label>Website<input type="text" id="c-website" tabindex="-1" autocomplete="off" /></label></div>
+            <div class="field"><label for="c-name">Name *</label><input type="text" id="c-name" required /></div>
+            <div class="field"><label for="c-email">Email *</label><input type="email" id="c-email" required /></div>
+            <div class="field"><label for="c-phone">Phone</label><input type="tel" id="c-phone" placeholder="07XX XXX XXX" /></div>
+            <div class="field"><label for="c-subject">Subject</label><input type="text" id="c-subject" /></div>
+            <div class="field"><label for="c-message">Message *</label><textarea id="c-message" required></textarea></div>
+            <button class="btn" type="submit" id="c-submit">Send message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="cols">
+        <div><h5>County Government of Mandera</h5><p>Official meeting attendance and sign-in platform.</p></div>
+        <div><h5>Links</h5><ul><li><a href="/">Home</a></li><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li></ul></div>
+        <div><h5>Contact</h5><ul><li>P.O. Box 13-70300</li><li>Mandera, Kenya</li><li><a href="mailto:info@mandera.go.ke">info@mandera.go.ke</a></li></ul></div>
+      </div>
+      <div class="copy">© <span id="year">2026</span> County Government of Mandera. All rights reserved.</div>
+    </div>
+  </footer>
+  <script src="/static/site.js"></script>
+  <script src="/static/site-contact.js"></script>
+</body>
+</html>

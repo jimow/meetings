@@ -194,6 +194,25 @@
         <div class="check"><input type="checkbox" id="ed-collect-ip" checked /><label for="ed-collect-ip">Record IP address (audit)</label></div>
       </div>
 
+      <div class="card stack">
+        <h2>📣 Notifications</h2>
+        <p class="muted small">Send confirmations when someone signs in. SMS uses Africa's Talking; email uses Resend. These only fire if the server has the matching API keys configured.</p>
+        <div class="check"><input type="checkbox" id="ed-notify-att-email" /><label for="ed-notify-att-email">Email the attendee a confirmation (needs an email field)</label></div>
+        <div class="check"><input type="checkbox" id="ed-notify-att-sms" /><label for="ed-notify-att-sms">SMS the attendee a confirmation (needs a phone field)</label></div>
+        <div class="check"><input type="checkbox" id="ed-notify-own-email" /><label for="ed-notify-own-email">Email the meeting owner on each sign-in</label></div>
+        <div class="check"><input type="checkbox" id="ed-notify-own-sms" /><label for="ed-notify-own-sms">SMS the meeting owner on each sign-in</label></div>
+        <div class="row">
+          <div class="field grow" style="flex:1">
+            <label for="ed-owner-email">Owner alert email</label>
+            <input type="email" id="ed-owner-email" placeholder="Defaults to your account email" />
+          </div>
+          <div class="field grow" style="flex:1">
+            <label for="ed-owner-phone">Owner alert phone</label>
+            <input type="tel" id="ed-owner-phone" placeholder="e.g. 0712 345 678" />
+          </div>
+        </div>
+      </div>
+
       <div class="row">
         <button type="submit" id="editor-save">Save meeting</button>
         <button type="button" id="editor-cancel" class="btn btn-ghost">Cancel</button>

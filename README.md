@@ -1,10 +1,21 @@
-# 📋 Meeting Signs — Geofenced Meeting Sign-In Sheets
+# 📋 Meeting Signs — County Government of Mandera
 
-A self-hosted web app where an **admin/meeting owner** creates a meeting, configures
+A self-hosted web platform where an **admin/meeting owner** creates a meeting, configures
 the fields to capture, and shares a **short link or QR code**. Attendees open it,
 fill in the form, and sign in — but **only if they are physically inside a geofenced
-radius**, enforced on the server. Built with Node.js + Express + the built-in
-`node:sqlite` database (no native build steps, no external DB).
+radius**, enforced on the server. Includes a **public website**, **PDF/Word/CSV exports**,
+and **SMS + email notifications**.
+
+Built with Node.js + Express. Runs on the built-in `node:sqlite` out of the box, or on
+**Supabase (Postgres)** in production — selected with one environment variable.
+
+**Includes:**
+- Public marketing website (home / about / contact / privacy) branded for the **County Government of Mandera**
+- Geofenced sign-in with layered security
+- Configurable capture fields per meeting
+- Branded PDF, Word and CSV attendance exports (logo, org name, venue, dates)
+- **Resend** email + **Africa's Talking** SMS notifications on sign-in
+- Pluggable backend: **SQLite** (default) or **Supabase**
 
 ---
 
@@ -55,7 +66,54 @@ PDF and Word **Attendance / Sign-In Sheet** shows:
 The table columns are built automatically from the fields you configured for that
 meeting, plus the sign-in time and geofence result.
 
-> Requires **Node.js ≥ 22.5** (for the built-in SQLite module).
+The public website is at **/** ; staff/admin is at **/admin**.
+
+> Requires **Node.js ≥ 22.5** (for the built-in SQLite module, when using the SQLite backend).
+
+---
+
+## Choosing a backend (SQLite or Supabase)
+
+Set `DB_BACKEND` in your environment:
+
+| `DB_BACKEND` | Storage | When to use |
+|---|---|---|
+| `sqlite` (default) | Local file `data/meeting-signs.db` | Dev, offline, single-server. Zero config. |
+| `supabase` | Supabase Postgres | Production / cloud / multi-instance. |
+
+**To use Supabase:**
+
+1. Create a Supabase project.
+2. Open the SQL Editor and run [`supabase/schema.sql`](supabase/schema.sql).
+3. Set these env vars (use the **service-role** key — server-side only, never in a browser):
+   ```
+   DB_BACKEND=supabase
+   SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   ```
+4. `npm start`. The app validates the connection on boot and exits with a clear
+   message if it can't reach Supabase or the schema is missing.
+
+Both backends implement the **same data-store contract** (`src/store/`), so the rest
+of the app is identical regardless of which you choose.
+
+---
+
+## Notifications (Resend + Africa's Talking)
+
+When someone signs in, the platform can send confirmations. Each meeting has four
+independent toggles (set in the meeting editor): **attendee email**, **attendee SMS**,
+**owner email**, **owner SMS**. A channel only fires if (a) its toggle is on, (b) the
+matching field exists on the meeting (email/phone), and (c) the server has the API keys.
+
+- **Email — Resend:** set `RESEND_API_KEY` and `RESEND_FROM` (a verified-domain sender).
+- **SMS — Africa's Talking:** set `AT_USERNAME` and `AT_API_KEY` (use `sandbox` for testing;
+  the app auto-routes to the sandbox API). Optional `AT_SENDER_ID` for a registered sender.
+- Phone numbers are normalized to Kenyan E.164 (`+2547XXXXXXXX`) automatically.
+- The website **contact form** also emails `CONTACT_TO` via Resend.
+
+All sends are **best-effort and non-blocking** — a failed SMS/email never blocks or
+fails a sign-in; failures are logged.
 
 ---
 
@@ -124,10 +182,15 @@ as columns plus sign-in time and geofence result.
 ## Project layout
 
 ```
-server.js              Express app: security middleware, routing, static serving
+server.js              Express app: security middleware, routing, website + API
 src/
   config.js            Env + auto-generated persistent secrets
-  db.js                node:sqlite schema (admins, sessions, meetings, signins, audit_log)
+  store/
+    index.js           Backend selector (DB_BACKEND)
+    sqlite.js          SQLite implementation of the data-store contract
+    supabase.js        Supabase (Postgres) implementation of the same contract
+  notify.js            Resend (email) + Africa's Talking (SMS) senders + dispatch
+  db.js                node:sqlite schema (used by the sqlite store)
   auth.js              Password hashing, signed sessions, CSRF, middleware
   geo.js               Haversine + authoritative geofence evaluation
   validate.js          Field-definition and submission validation
@@ -138,11 +201,15 @@ src/
     auth.js            Register / login / logout / me / sessions
     branding.js        Org name/address/contact/footer + logo upload
     meetings.js        Admin CRUD, QR PNG, sign-in list, PDF/Word/CSV export
-    signin.js          Public meeting info + geofenced sign-in submission
+    signin.js          Public meeting info + geofenced sign-in + notifications
+    contact.js         Public website contact form (stores + emails county)
+supabase/
+  schema.sql           Postgres schema to run in the Supabase SQL editor
 public/
+  site/                Public website: index/about/contact/privacy (Mandera)
   admin/index.html     Admin SPA shell
   signin/index.html    Public sign-in page (QR/link target)
-  static/              styles.css, admin.js, signin.js, 404.html
+  static/              styles.css, site.css, admin.js, signin.js, site*.js, 404.html
 data/                  SQLite DB + secrets.json (gitignored, auto-created)
 ```
 
@@ -155,7 +222,11 @@ data/                  SQLite DB + secrets.json (gitignored, auto-created)
    won't work over plain `http://` except on `localhost`.
 2. Set environment variables (see `.env.example`):
    - `NODE_ENV=production`
-   - `BASE_URL=https://your-domain` (so QR codes/links point to the right place)
+   - `BASE_URL` — **optional.** Leave it unset and share links/QR codes are built from
+     the domain each request arrives on (so a deployed instance uses its real domain,
+     and local runs use `localhost`). Set it only to pin a fixed canonical origin,
+     e.g. `https://signin.mandera.go.ke`. ⚠ Do **not** leave it set to a `localhost`
+     value in production, or every shared link will point at localhost.
    - `FORCE_SECURE_COOKIES=true` if TLS is terminated upstream
 3. `npm start` (or run under a process manager / systemd / pm2).
 

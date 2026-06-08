@@ -10,7 +10,12 @@
       "Bash(curl -s -o /dev/null -w \"signin page HTTP %{http_code}\\\\n\" http://localhost:3000/m/anything)",
       "Bash(pkill -f \"node server.js\")",
       "Bash(node -e ' *)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(DB_BACKEND=supabase node -e ' *)",
+      "Bash(node -e \"console.log\\('Selected backend:', require\\('./src/store'\\).backend\\)\")",
+      "Bash(BASE_URL='' node -e ' *)",
+      "Bash(BASE_URL=https://attendance.mandera.go.ke node -e ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const l=fs.readFileSync\\('.env','utf8'\\).split\\(/\\\\r?\\\\n/\\).find\\(x=>/BASE_URL/i.test\\(x\\)\\);console.log\\('current BASE_URL line:', l\\)\")"
     ]
   }
 }
