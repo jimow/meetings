@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · Meeting Signs</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">📋 Meeting Signs</span>
+    <div class="row" id="nav-auth"></div>
+  </div>
+
+  <!-- AUTH (login / bootstrap) -->
+  <div id="view-auth" class="container-narrow hidden">
+    <div class="card">
+      <h1 id="auth-title">Sign in</h1>
+      <p class="muted" id="auth-sub"></p>
+      <div id="auth-banner" class="banner hidden"></div>
+      <form id="auth-form" class="stack">
+        <div class="field" id="name-field">
+          <label for="auth-name">Your name</label>
+          <input type="text" id="auth-name" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="auth-email">Email</label>
+          <input type="email" id="auth-email" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" autocomplete="current-password" required />
+          <div class="hint" id="pw-hint"></div>
+        </div>
+        <button class="btn btn-block" id="auth-submit" type="submit">Sign in</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <div id="view-list" class="container hidden">
+    <div class="spread">
+      <h1>Your meetings</h1>
+      <div class="row">
+        <button id="branding-btn" class="btn btn-ghost">🏢 Branding</button>
+        <button id="new-meeting-btn">+ New meeting</button>
+      </div>
+    </div>
+    <div id="list-empty" class="card center hidden">
+      <p class="muted">No meetings yet. Create your first sign-in sheet.</p>
+      <button id="new-meeting-btn2">+ New meeting</button>
+    </div>
+    <div id="meetings-grid" class="grid-meetings" style="margin-top:1rem"></div>
+
+    <div class="card" style="margin-top:2rem">
+      <h2>Active sessions</h2>
+      <p class="muted small">Devices currently signed in to this admin account.</p>
+      <div id="sessions-list" class="table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- BRANDING -->
+  <div id="view-branding" class="container-narrow hidden">
+    <a href="#" id="branding-back" class="small">← Back to meetings</a>
+    <h1>Organization branding</h1>
+    <p class="muted small">This appears as the header on your exported PDF and Word attendance sheets.</p>
+    <div id="branding-banner" class="banner hidden"></div>
+
+    <div class="card stack">
+      <div class="field">
+        <label>Logo</label>
+        <div class="row" style="align-items:center">
+          <img id="branding-logo-preview" alt="logo" style="max-height:64px;max-width:180px;border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff" class="hidden" />
+          <span id="branding-logo-none" class="muted small">No logo uploaded.</span>
+        </div>
+        <div class="row" style="margin-top:.5rem">
+          <input type="file" id="branding-logo-input" accept="image/png,image/jpeg" />
+          <button type="button" id="branding-logo-remove" class="btn btn-danger btn-sm hidden">Remove</button>
+        </div>
+        <div class="hint">PNG or JPEG, under 1 MB. Shown top-left of each document.</div>
+      </div>
+
+      <form id="branding-form" class="stack">
+        <div class="field">
+          <label for="br-org">Organization name</label>
+          <input type="text" id="br-org" placeholder="Acme Corporation" />
+        </div>
+        <div class="field">
+          <label for="br-address">Address</label>
+          <input type="text" id="br-address" placeholder="123 Main St, Springfield" />
+        </div>
+        <div class="field">
+          <label for="br-contact">Contact line</label>
+          <input type="text" id="br-contact" placeholder="info@acme.com · +1 555 123 4567" />
+        </div>
+        <div class="field">
+          <label for="br-footer">Document footer text</label>
+          <input type="text" id="br-footer" placeholder="Confidential · Acme Corporation" />
+        </div>
+        <button type="submit" class="btn">Save branding</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="view-editor" class="container hidden">
+    <a href="#" id="editor-back" class="small">← Back to meetings</a>
+    <h1 id="editor-title">New meeting</h1>
+    <div id="editor-banner" class="banner hidden"></div>
+
+    <form id="editor-form">
+      <div class="card stack">
+        <h2>Basics</h2>
+        <div class="field">
+          <label for="ed-title">Meeting title *</label>
+          <input type="text" id="ed-title" required placeholder="Weekly Standup" />
+        </div>
+        <div class="field">
+          <label for="ed-desc">Description</label>
+          <textarea id="ed-desc" placeholder="Shown to attendees on the sign-in page."></textarea>
+        </div>
+        <div class="field">
+          <label for="ed-location-name">Location name</label>
+          <input type="text" id="ed-location-name" placeholder="Conference Room B / Main Hall" />
+        </div>
+        <div class="field">
+          <label for="ed-venue">Venue (for exported documents)</label>
+          <input type="text" id="ed-venue" placeholder="e.g. Acme HQ, 5th Floor Auditorium" />
+          <div class="hint">Printed on the PDF/Word attendance sheet. Defaults to the location name if blank.</div>
+        </div>
+      </div>
+
+      <div class="card stack">
+        <div class="spread">
+          <h2>🛡️ Geofence</h2>
+          <div class="check"><input type="checkbox" id="ed-geofence" checked /><label for="ed-geofence">Enabled</label></div>
+        </div>
+        <p class="muted small">Attendees outside the radius are blocked from signing in. The check runs on the server.</p>
+        <div id="geofence-settings">
+          <div class="row">
+            <div class="field grow" style="flex:1">
+              <label for="ed-lat">Latitude</label>
+              <input type="text" id="ed-lat" placeholder="e.g. 37.7749" />
+            </div>
+            <div class="field grow" style="flex:1">
+              <label for="ed-lng">Longitude</label>
+              <input type="text" id="ed-lng" placeholder="e.g. -122.4194" />
+            </div>
+          </div>
+          <button type="button" id="use-location-btn" class="btn btn-ghost btn-sm">📍 Use my current location</button>
+          <span id="use-location-status" class="small muted"></span>
+          <div class="row" style="margin-top:1rem">
+            <div class="field grow" style="flex:1">
+              <label for="ed-radius">Allowed radius (meters)</label>
+              <input type="number" id="ed-radius" value="150" min="10" />
+              <div class="hint">How far from the point attendees may sign in.</div>
+            </div>
+            <div class="field grow" style="flex:1">
+              <label for="ed-accuracy">Max GPS accuracy (meters)</label>
+              <input type="number" id="ed-accuracy" value="100" min="5" />
+              <div class="hint">Reject sign-ins whose GPS is fuzzier than this (anti-spoof).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card stack">
+        <h2>Fields to capture</h2>
+        <p class="muted small">These are the questions attendees fill in. Drag order is top-to-bottom.</p>
+        <div id="fields-list"></div>
+        <button type="button" id="add-field-btn" class="btn btn-ghost btn-sm">+ Add field</button>
+      </div>
+
+      <div class="card stack">
+        <h2>Access & window</h2>
+        <div class="row">
+          <div class="field grow" style="flex:1">
+            <label for="ed-starts">Opens at (optional)</label>
+            <input type="datetime-local" id="ed-starts" />
+          </div>
+          <div class="field grow" style="flex:1">
+            <label for="ed-ends">Closes at (optional)</label>
+            <input type="datetime-local" id="ed-ends" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="ed-passcode">Passcode (optional)</label>
+          <input type="text" id="ed-passcode" autocomplete="off" placeholder="Leave blank for none · min 4 chars" />
+          <div class="hint" id="passcode-hint">Attendees must enter this to sign in. Leave blank to keep/disable.</div>
+        </div>
+        <div class="check"><input type="checkbox" id="ed-open" checked /><label for="ed-open">Open for sign-ins now</label></div>
+        <div class="check"><input type="checkbox" id="ed-unique-email" checked /><label for="ed-unique-email">Prevent duplicate sign-ins by email</label></div>
+        <div class="check"><input type="checkbox" id="ed-one-device" checked /><label for="ed-one-device">Prevent duplicate sign-ins by device</label></div>
+        <div class="check"><input type="checkbox" id="ed-collect-ip" checked /><label for="ed-collect-ip">Record IP address (audit)</label></div>
+      </div>
+
+      <div class="row">
+        <button type="submit" id="editor-save">Save meeting</button>
+        <button type="button" id="editor-cancel" class="btn btn-ghost">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="view-detail" class="container hidden">
+    <a href="#" id="detail-back" class="small">← Back to meetings</a>
+    <div class="spread">
+      <h1 id="detail-title"></h1>
+      <div class="row">
+        <button id="detail-toggle" class="btn btn-ghost btn-sm"></button>
+        <button id="detail-edit" class="btn btn-ghost btn-sm">Edit</button>
+        <button id="detail-delete" class="btn btn-danger btn-sm">Delete</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:flex-start; gap:2rem">
+        <div>
+          <img id="detail-qr" class="qr-img" alt="QR code" />
+        </div>
+        <div style="flex:1; min-width:240px">
+          <h2>Share this meeting</h2>
+          <p class="muted small">Attendees scan the QR or open the link to sign in.</p>
+          <div class="field">
+            <label>Shareable link</label>
+            <div class="row">
+              <input type="text" id="detail-link" readonly />
+              <button id="copy-link" class="btn btn-ghost btn-sm" type="button">Copy</button>
+            </div>
+          </div>
+          <a id="download-qr" class="btn btn-ghost btn-sm" download>Download QR (PNG)</a>
+          <a id="open-signin" class="btn btn-ghost btn-sm" target="_blank" rel="noopener">Open sign-in page</a>
+          <div id="detail-meta" class="small muted" style="margin-top:1rem"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="spread">
+        <h2>Sign-ins (<span id="signin-count">0</span>)</h2>
+        <div class="row">
+          <a id="export-pdf" class="btn btn-ghost btn-sm">⬇ PDF</a>
+          <a id="export-docx" class="btn btn-ghost btn-sm">⬇ Word</a>
+          <a id="export-csv" class="btn btn-ghost btn-sm">⬇ CSV</a>
+        </div>
+      </div>
+      <p class="small muted" id="export-branding-hint" style="margin-top:.25rem"></p>
+      <div id="signins-wrap" class="table-wrap"></div>
+    </div>
+  </div>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>

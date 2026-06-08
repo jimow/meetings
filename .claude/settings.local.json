@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('./server.js'\\); setTimeout\\(\\(\\)=>process.exit\\(0\\), 1200\\);\")",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000/api/auth/me)",
+      "Bash(curl -s -o /dev/null -w \"admin HTTP %{http_code}\\\\n\" http://localhost:3000/admin)",
+      "Bash(curl -s -o /dev/null -w \"signin page HTTP %{http_code}\\\\n\" http://localhost:3000/m/anything)",
+      "Bash(pkill -f \"node server.js\")",
+      "Bash(node -e ' *)",
+      "Bash(netstat -ano)"
+    ]
+  }
+}

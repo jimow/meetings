@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Sign in · Meeting Signs</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container-narrow">
+    <div id="loading" class="card center">
+      <div class="spinner dark" style="margin:1rem auto"></div>
+      <p class="muted">Loading meeting…</p>
+    </div>
+
+    <div id="notfound" class="card center hidden">
+      <h1>Meeting not found</h1>
+      <p class="muted">This sign-in link is invalid or has been removed.</p>
+    </div>
+
+    <div id="closed" class="card center hidden">
+      <h1 id="closed-title">Sign-in closed</h1>
+      <p class="muted" id="closed-msg"></p>
+    </div>
+
+    <div id="meeting" class="hidden">
+      <div class="card">
+        <h1 id="m-title"></h1>
+        <p class="muted" id="m-location"></p>
+        <p id="m-desc" style="white-space:pre-wrap"></p>
+      </div>
+
+      <div class="card">
+        <div id="geo-block" class="field hidden">
+          <div id="geo-status" class="geo-status">
+            <span class="dot" id="geo-dot"></span>
+            <span id="geo-text">Location required for this meeting.</span>
+          </div>
+          <button id="geo-btn" class="btn btn-block" style="margin-top:.75rem" type="button">Share my location to continue</button>
+          <p class="hint">Your location is checked against the meeting's allowed area. It is only used to verify you're on-site.</p>
+        </div>
+
+        <form id="signin-form" class="stack" autocomplete="on">
+          <div id="dynamic-fields"></div>
+
+          <div id="passcode-block" class="field hidden">
+            <label for="passcode">Meeting passcode</label>
+            <input type="password" id="passcode" inputmode="numeric" autocomplete="off" placeholder="Enter passcode" />
+          </div>
+
+          <div id="form-banner" class="banner hidden"></div>
+          <button id="submit-btn" class="btn btn-block" type="submit">Sign in</button>
+        </form>
+      </div>
+      <p class="center small muted">Secured by Meeting Signs · geofenced sign-in</p>
+    </div>
+
+    <div id="success" class="card hidden">
+      <div class="success-screen">
+        <div class="success-check">✓</div>
+        <h1>You're signed in</h1>
+        <p class="muted" id="success-msg">Thanks — your attendance has been recorded.</p>
+        <p class="small muted" id="success-flag"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/signin.js"></script>
+</body>
+</html>
