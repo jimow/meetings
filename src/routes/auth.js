@@ -43,22 +43,25 @@ router.post('/register', loginLimiter, wrap(async (req, res) => {
 
   const id = randomId();
   const passwordHash = await auth.hashPassword(password);
-  const role = hasAdmins ? 'admin' : 'owner';
+  // First account ever = super-admin (sees all). Everyone else = standard user.
+  const role = hasAdmins ? 'user' : 'admin';
   await store.createAdmin({ id, email, password_hash: passwordHash, name, role, created_at: Date.now() });
+
+  // Seed every new account with the County's default header/branding so their
+  // sign-in sheets carry the official letterhead by default (they can edit it).
+  try {
+    await store.upsertBrandingText(id, {
+      org_name: process.env.ORG_NAME || 'County Government of Mandera',
+      address: process.env.ORG_ADDRESS || 'P.O. Box 13-70300, Mandera, Kenya',
+      contact: process.env.ORG_CONTACT || 'info@mandera.go.ke',
+      footer_text: process.env.ORG_FOOTER || 'County Government of Mandera · Official attendance record',
+      updated_at: Date.now(),
+    });
+  } catch { /* non-fatal */ }
 
   audit('admin.register', { actor: req.admin?.id || id, target: id, ip: clientIp(req), detail: { email, role } });
 
   if (!hasAdmins) {
-    // Seed default organization branding for the County (editable later).
-    try {
-      await store.upsertBrandingText(id, {
-        org_name: process.env.ORG_NAME || 'County Government of Mandera',
-        address: process.env.ORG_ADDRESS || 'P.O. Box 13-70300, Mandera, Kenya',
-        contact: process.env.ORG_CONTACT || 'info@mandera.go.ke',
-        footer_text: process.env.ORG_FOOTER || 'County Government of Mandera · Official attendance record',
-        updated_at: Date.now(),
-      });
-    } catch { /* non-fatal */ }
     const { sid, csrf } = await auth.createSession(id, req);
     auth.setSessionCookie(res, req, sid);
     return res.status(201).json({ admin: { id, email, name, role }, csrfToken: csrf });
@@ -109,7 +112,11 @@ router.post('/logout', wrap(async (req, res) => {
 // --- Current user + CSRF token + bootstrap state ------------------------
 router.get('/me', wrap(async (req, res) => {
   if (!req.admin) {
-    return res.json({ admin: null, needsBootstrap: (await store.countAdmins()) === 0 });
+    return res.json({
+      admin: null,
+      needsBootstrap: (await store.countAdmins()) === 0,
+      openRegistration: config.allowOpenRegistration,
+    });
   }
   res.json({ admin: req.admin, csrfToken: req.session.csrf_token });
 }));

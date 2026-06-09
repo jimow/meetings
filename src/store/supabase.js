@@ -6,6 +6,7 @@
 //
 // Run supabase/schema.sql in your Supabase project's SQL editor first.
 
+require('../ws-polyfill'); // provide global WebSocket on Node < 22
 const { createClient } = require('@supabase/supabase-js');
 
 let sb = null;
@@ -60,6 +61,23 @@ module.exports = {
   async resetAdminLock(id) {
     must(await client().from('admins').update({ failed_logins: 0, locked_until: null }).eq('id', id));
   },
+  async listAdmins() {
+    return must(await client().from('admins').select('id, email, name, role, created_at').order('created_at', { ascending: true }));
+  },
+  async countAdminsByRole(roles) {
+    const res = await client().from('admins').select('id', { count: 'exact', head: true }).in('role', roles);
+    if (res.error) throw new Error(res.error.message);
+    return res.count || 0;
+  },
+  async deleteAdmin(id) { must(await client().from('admins').delete().eq('id', id)); },
+  async setAdminRole(id, role) { must(await client().from('admins').update({ role }).eq('id', id)); },
+  async setAdminPasswordByEmail(email, hash) {
+    const res = await client().from('admins')
+      .update({ password_hash: hash, failed_logins: 0, locked_until: null })
+      .eq('email', email).select('id');
+    if (res.error) throw new Error(res.error.message);
+    return Array.isArray(res.data) && res.data.length > 0;
+  },
 
   // --- Sessions ---
   async createSession(s) { must(await client().from('sessions').insert(s)); },
@@ -92,6 +110,14 @@ module.exports = {
   async getMeetingBySlug(slug) { return must(await client().from('meetings').select('*').eq('slug', slug).maybeSingle()); },
   async listMeetingsByOwner(ownerId) {
     return must(await client().from('meetings').select('*').eq('owner_id', ownerId).order('created_at', { ascending: false }));
+  },
+  async listAllMeetings() {
+    return must(await client().from('meetings').select('*').order('created_at', { ascending: false }));
+  },
+  async countMeetingsByOwner(ownerId) {
+    const res = await client().from('meetings').select('id', { count: 'exact', head: true }).eq('owner_id', ownerId);
+    if (res.error) throw new Error(res.error.message);
+    return res.count || 0;
   },
   async countSignins(meetingId) {
     const res = await client().from('signins').select('id', { count: 'exact', head: true }).eq('meeting_id', meetingId);

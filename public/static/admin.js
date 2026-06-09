@@ -6,7 +6,7 @@
   const hide = (id) => $(id).classList.add('hidden');
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const state = { admin: null, csrf: null, editingId: null, needsBootstrap: false, currentMeeting: null, branding: null };
+  const state = { admin: null, csrf: null, editingId: null, needsBootstrap: false, currentMeeting: null, branding: null, openRegistration: false, authMode: 'login' };
 
   async function loadBranding() {
     const { json } = await api('GET', '/branding');
@@ -39,7 +39,9 @@
   function parseLocalInput(v) { return v ? new Date(v).getTime() : null; }
 
   // --- View switching ------------------------------------------------------
-  function hideAll() { ['view-auth', 'view-list', 'view-editor', 'view-detail', 'view-branding'].forEach(hide); }
+  function hideAll() { ['view-auth', 'view-list', 'view-editor', 'view-detail', 'view-branding', 'view-users'].forEach(hide); }
+
+  function isAdminRole() { return state.admin && (state.admin.role === 'admin' || state.admin.role === 'owner'); }
 
   function renderAuthNav() {
     const nav = $('nav-auth');
@@ -56,14 +58,27 @@
   function showAuth() {
     hideAll();
     const isBootstrap = state.needsBootstrap;
-    $('auth-title').textContent = isBootstrap ? 'Create admin account' : 'Admin sign in';
+    const registering = isBootstrap || state.authMode === 'register';
+    $('auth-title').textContent = isBootstrap ? 'Create admin account' : (registering ? 'Create your account' : 'Staff sign in');
     $('auth-sub').textContent = isBootstrap
-      ? 'No admin exists yet. Create the first owner account to get started.'
-      : 'Sign in to manage your meeting sign-in sheets.';
-    $('name-field').classList.toggle('hidden', !isBootstrap);
-    $('pw-hint').textContent = isBootstrap ? 'Minimum 10 characters.' : '';
-    $('auth-password').autocomplete = isBootstrap ? 'new-password' : 'current-password';
-    $('auth-submit').textContent = isBootstrap ? 'Create account' : 'Sign in';
+      ? 'No admin exists yet. Create the first administrator account to get started.'
+      : (registering ? 'Register to create and manage your own meetings.' : 'Sign in to manage your meeting sign-in sheets.');
+    $('name-field').classList.toggle('hidden', !registering);
+    $('pw-hint').textContent = registering ? 'Minimum 10 characters.' : '';
+    $('auth-password').autocomplete = registering ? 'new-password' : 'current-password';
+    $('auth-submit').textContent = registering ? 'Create account' : 'Sign in';
+
+    // Toggle between sign-in and self-registration (only when open registration is on).
+    const toggle = $('auth-toggle');
+    if (isBootstrap || !state.openRegistration) {
+      toggle.classList.add('hidden');
+    } else {
+      toggle.classList.remove('hidden');
+      toggle.innerHTML = registering
+        ? 'Already have an account? <a href="#" id="auth-toggle-link">Sign in</a>'
+        : 'Need an account? <a href="#" id="auth-toggle-link">Create one</a>';
+      $('auth-toggle-link').onclick = (ev) => { ev.preventDefault(); state.authMode = registering ? 'login' : 'register'; showAuth(); };
+    }
     show('view-auth');
   }
 
@@ -74,8 +89,9 @@
     const email = $('auth-email').value.trim();
     const password = $('auth-password').value;
     const name = $('auth-name').value.trim();
-    const path = state.needsBootstrap ? '/auth/register' : '/auth/login';
-    const payload = state.needsBootstrap ? { email, password, name } : { email, password };
+    const registering = state.needsBootstrap || state.authMode === 'register';
+    const path = registering ? '/auth/register' : '/auth/login';
+    const payload = registering ? { email, password, name } : { email, password };
 
     const { ok, json } = await api('POST', path, payload);
     if (!ok) {
@@ -91,6 +107,16 @@
       banner.className = 'banner err';
       return;
     }
+    // Self-registration (non-bootstrap) creates the account but does not log in.
+    if (registering && !json.csrfToken) {
+      state.authMode = 'login';
+      showAuth();
+      banner.textContent = 'Account created. Please sign in with your new credentials.';
+      banner.className = 'banner ok';
+      $('auth-email').value = email;
+      return;
+    }
+
     state.admin = json.admin;
     state.csrf = json.csrfToken;
     state.needsBootstrap = false;
@@ -111,6 +137,11 @@
     hideAll();
     const { json } = await api('GET', '/meetings');
     const meetings = json?.meetings || [];
+    const admin = isAdminRole();
+
+    $('list-title').textContent = admin ? 'All meetings (admin view)' : 'Your meetings';
+    $('users-btn').classList.toggle('hidden', !admin);
+
     const grid = $('meetings-grid');
     grid.innerHTML = '';
     $('list-empty').classList.toggle('hidden', meetings.length > 0);
@@ -122,10 +153,14 @@
         ? '<span class="badge ok">● Open</span>'
         : '<span class="badge danger">● Closed</span>';
       const geoBadge = m.geofenceEnabled ? `<span class="badge brand">🛡️ ${m.radiusMeters}m</span>` : '<span class="badge">No geofence</span>';
+      const hostLine = admin
+        ? `<p class="muted small" style="margin:.25rem 0 0">👤 Host: ${esc(m.ownerName || '')}${m.isOwn ? ' <span class="badge brand">you</span>' : ''}</p>`
+        : '';
       card.innerHTML = `
         <div class="spread"><h2 style="margin:0">${esc(m.title)}</h2></div>
         <div class="row" style="margin:.5rem 0">${statusBadge} ${geoBadge} <span class="badge">${m.signinCount} signed in</span></div>
-        <p class="muted small">${esc(m.locationName || '')}</p>
+        <p class="muted small" style="margin:0">${esc(m.locationName || '')}</p>
+        ${hostLine}
         <div class="row" style="margin-top:.75rem">
           <button class="btn btn-sm" data-open="${m.id}">Open</button>
           <button class="btn btn-ghost btn-sm" data-edit="${m.id}">Edit</button>
@@ -137,6 +172,75 @@
 
     await loadSessions();
     show('view-list');
+  }
+
+  // --- USERS (admin only) --------------------------------------------------
+  async function showUsers() {
+    hideAll();
+    $('users-banner').className = 'banner hidden';
+    await loadUsers();
+    show('view-users');
+  }
+
+  function usersBanner(msg, kind) {
+    const el = $('users-banner');
+    el.textContent = msg; el.className = 'banner ' + kind;
+    if (kind === 'ok') setTimeout(() => { el.className = 'banner hidden'; }, 2500);
+  }
+
+  async function loadUsers() {
+    const { json } = await api('GET', '/users');
+    const wrap = $('users-list');
+    const users = json?.users || [];
+    let html = '<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Meetings</th><th></th></tr></thead><tbody>';
+    for (const u of users) {
+      const roleBadge = u.role === 'admin' ? '<span class="badge brand">admin</span>' : '<span class="badge">user</span>';
+      html += `<tr>
+        <td>${esc(u.name || '—')}${u.isSelf ? ' <span class="badge ok">you</span>' : ''}</td>
+        <td class="small">${esc(u.email)}</td>
+        <td>${roleBadge}</td>
+        <td>${u.meetingCount}</td>
+        <td>${u.isSelf ? '' : `
+          <button class="btn btn-ghost btn-sm" data-role="${u.id}" data-newrole="${u.role === 'admin' ? 'user' : 'admin'}">Make ${u.role === 'admin' ? 'user' : 'admin'}</button>
+          <button class="btn btn-danger btn-sm" data-deluser="${u.id}">Delete</button>`}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('[data-deluser]').forEach((b) => (b.onclick = () => deleteUser(b.dataset.deluser)));
+    wrap.querySelectorAll('[data-role]').forEach((b) => (b.onclick = () => changeRole(b.dataset.role, b.dataset.newrole)));
+  }
+
+  async function addUser(e) {
+    e.preventDefault();
+    const payload = {
+      name: $('nu-name').value.trim(),
+      email: $('nu-email').value.trim(),
+      password: $('nu-pass').value,
+      role: $('nu-role').value,
+    };
+    const { ok, json } = await api('POST', '/users', payload);
+    if (ok) {
+      $('user-form').reset();
+      usersBanner('User created: ' + json.user.email, 'ok');
+      loadUsers();
+    } else {
+      const msgs = { invalid_email: 'Enter a valid email.', weak_password: 'Password must be at least 10 characters.', email_in_use: 'That email is already registered.' };
+      usersBanner(msgs[json?.error] || 'Could not create user.', 'err');
+    }
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('Delete this user and ALL of their meetings and sign-ins? This cannot be undone.')) return;
+    const { ok, json } = await api('DELETE', '/users/' + id);
+    if (ok) { usersBanner('User deleted.', 'ok'); loadUsers(); }
+    else usersBanner(json?.error === 'last_admin' ? 'Cannot delete the last admin.' : 'Could not delete user.', 'err');
+  }
+
+  async function changeRole(id, newRole) {
+    const { ok, json } = await api('PATCH', '/users/' + id + '/role', { role: newRole });
+    if (ok) loadUsers();
+    else usersBanner(json?.error === 'last_admin' ? 'Cannot demote the last admin.' : 'Could not change role.', 'err');
   }
 
   async function loadSessions() {
@@ -488,6 +592,9 @@
     $('new-meeting-btn2').onclick = () => showEditor(null);
     $('branding-btn').onclick = showBranding;
     $('branding-back').onclick = (e) => { e.preventDefault(); showList(); };
+    $('users-btn').onclick = showUsers;
+    $('users-back').onclick = (e) => { e.preventDefault(); showList(); };
+    $('user-form').addEventListener('submit', addUser);
     $('branding-form').addEventListener('submit', saveBranding);
     $('branding-logo-input').addEventListener('change', (e) => uploadLogo(e.target.files[0]));
     $('branding-logo-remove').onclick = removeLogo;
@@ -515,6 +622,7 @@
       await showList();
     } else {
       state.needsBootstrap = !!json?.needsBootstrap;
+      state.openRegistration = !!json?.openRegistration;
       renderAuthNav();
       showAuth();
     }

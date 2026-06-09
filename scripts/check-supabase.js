@@ -5,6 +5,7 @@
 // Reads SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY from .env (or the environment).
 
 require('../src/config'); // loads .env
+require('../src/ws-polyfill'); // global WebSocket on Node < 22
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -14,7 +15,6 @@ const { createClient } = require('@supabase/supabase-js');
 
   console.log('\n  Supabase connectivity check');
   console.log('  ─────────────────────────────');
-  console.log('  DB_BACKEND          :', process.env.DB_BACKEND || '(unset → sqlite)');
   console.log('  SUPABASE_URL        :', url ? url : 'MISSING ✗');
   console.log('  SERVICE_ROLE_KEY    :', key ? key.slice(0, 6) + '…' + key.slice(-4) : 'MISSING ✗');
 
@@ -53,7 +53,7 @@ const { createClient } = require('@supabase/supabase-js');
   }
 
   console.log('  ✓ Insert + read + delete round-trip succeeded.');
-  console.log('\n  RESULT: Supabase is correctly configured. Set DB_BACKEND=supabase to use it.\n');
+  console.log('\n  RESULT: Supabase is correctly configured and ready.\n');
   process.exit(0);
 })().catch((e) => {
   console.error('\n  ✗ Unexpected error:', e.message, '\n');

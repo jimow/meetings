@@ -7,11 +7,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "seed": "node scripts/seed.js",
-    "check:supabase": "node scripts/check-supabase.js"
+    "check:supabase": "node scripts/check-supabase.js",
+    "reset-password": "node scripts/reset-password.js"
   },
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.107.0",
@@ -22,6 +22,7 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "pdfkit": "^0.18.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "ws": "^8.21.0"
   }
 }

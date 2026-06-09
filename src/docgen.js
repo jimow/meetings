@@ -85,7 +85,7 @@ function logoDims(branding) {
 // =========================================================================
 // PDF (pdfkit)
 // =========================================================================
-function generatePdf(meeting, signins, branding, stream) {
+function generatePdf(meeting, signins, branding, stream, opts = {}) {
   const doc = new PDFDocument({
     size: 'A4', layout: 'landscape', margin: 36, bufferPages: true,
     info: { Title: `${meeting.title} — Sign-In Sheet`, Author: branding?.org_name || 'Meeting Signs' },
@@ -125,6 +125,7 @@ function generatePdf(meeting, signins, branding, stream) {
   if (venue) doc.text('Venue: ' + pdfSafe(venue));
   const dateStr = meetingDateStr(meeting);
   if (dateStr) doc.text('Date: ' + dateStr);
+  if (opts.hostName) doc.text('Organizer / Host: ' + pdfSafe(opts.hostName));
 
   const { columns, rows, summary } = buildContent(meeting, signins);
   doc.fillColor('#475569').fontSize(9);
@@ -254,7 +255,7 @@ function buildDocxHeader(branding) {
   return new Header({ children: kids });
 }
 
-async function generateDocx(meeting, signins, branding) {
+async function generateDocx(meeting, signins, branding, opts = {}) {
   const { columns, rows, summary } = buildContent(meeting, signins);
 
   const headerRow = new TableRow({ tableHeader: true, children: columns.map((c) => cell(c.header, { header: true })) });
@@ -275,6 +276,7 @@ async function generateDocx(meeting, signins, branding) {
     metaPara('Meeting: ', meeting.title),
     ...(venue ? [metaPara('Venue: ', venue)] : []),
     ...(meetingDateStr(meeting) ? [metaPara('Date: ', meetingDateStr(meeting))] : []),
+    ...(opts.hostName ? [metaPara('Organizer / Host: ', opts.hostName)] : []),
     new Paragraph({ spacing: { before: 60, after: 160 }, children: [new TextRun({ text: summaryText, size: 16, color: '475569' })] }),
     table,
     new Paragraph({ spacing: { before: 160 }, children: [new TextRun({ text: `Generated ${new Date().toLocaleString()} · Secured by Meeting Signs`, size: 14, color: '94A3B8' })] }),

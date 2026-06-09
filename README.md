@@ -68,34 +68,32 @@ meeting, plus the sign-in time and geofence result.
 
 The public website is at **/** ; staff/admin is at **/admin**.
 
-> Requires **Node.js ≥ 22.5** (for the built-in SQLite module, when using the SQLite backend).
+> Requires **Node.js ≥ 18**. (On Node < 22, the bundled `ws` package supplies the
+> global `WebSocket` the Supabase client needs — installed automatically.)
 
 ---
 
-## Choosing a backend (SQLite or Supabase)
+## Backend: Supabase (required)
 
-Set `DB_BACKEND` in your environment:
-
-| `DB_BACKEND` | Storage | When to use |
-|---|---|---|
-| `sqlite` (default) | Local file `data/meeting-signs.db` | Dev, offline, single-server. Zero config. |
-| `supabase` | Supabase Postgres | Production / cloud / multi-instance. |
-
-**To use Supabase:**
+All data lives in **Supabase (Postgres)**. There is no local database.
 
 1. Create a Supabase project.
 2. Open the SQL Editor and run [`supabase/schema.sql`](supabase/schema.sql).
 3. Set these env vars (use the **service-role** key — server-side only, never in a browser):
    ```
-   DB_BACKEND=supabase
    SUPABASE_URL=https://YOUR-PROJECT.supabase.co
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    ```
-4. `npm start`. The app validates the connection on boot and exits with a clear
-   message if it can't reach Supabase or the schema is missing.
+4. `npm install && npm start`. The app validates the connection on boot and exits
+   with a clear message if it can't reach Supabase or the schema is missing.
 
-Both backends implement the **same data-store contract** (`src/store/`), so the rest
-of the app is identical regardless of which you choose.
+Verify connectivity any time with:
+```
+npm run check:supabase
+```
+
+> The data layer lives in `src/store/` behind a single contract, so the rest of the
+> app never talks to Supabase directly.
 
 ---
 
@@ -166,6 +164,37 @@ as columns plus sign-in time and geofence result.
 
 ---
 
+## Users & roles
+
+There are two roles:
+
+| Role | Sees | Can |
+|---|---|---|
+| **admin** (the first account; legacy `owner` counts as admin) | **All** meetings from every host | Manage users, view/edit/export any meeting |
+| **user** | **Only the meetings they created** | Create & manage their own meetings |
+
+- The **first account ever registered becomes the admin**. Every account after that is a **user**.
+- Admins manage accounts on the **👥 Users** page: add a user (name, email, temporary password, role), promote/demote, or delete (deleting a user removes their meetings too). The last admin cannot be removed/demoted.
+- **Self-registration** is off by default (admins create accounts). Set `ALLOW_OPEN_REGISTRATION=true` to let staff register themselves from the login page — new self-registered accounts are always `user`.
+- Ownership is enforced server-side: a user requesting another user's meeting (view, edit, export, sign-in list) gets `404`. Admins are allowed through.
+
+## Sign-in sheet document — header & layout
+
+Every exported PDF / Word attendance sheet uses the **host's branding** (set on the
+🏢 **Branding** page) and contains, top to bottom:
+
+1. **Logo** (top-left of every page)
+2. **Organization name**, **address**, **contact line** — the letterhead
+3. **Document title** — "Attendance / Sign-In Sheet"
+4. **Meeting**, **Venue**, **Date**, and **Organizer / Host** (the meeting owner's name)
+5. **Summary** — total attendees, within-geofence count, generated timestamp
+6. **Attendee table** — the meeting's configured fields + sign-in time + location result
+7. **Footer** — the host's footer text + "Page X of N", on every page
+
+Each host sets their own logo and details, and new accounts are pre-seeded with the
+County's default letterhead (configurable via `ORG_NAME` / `ORG_ADDRESS` / `ORG_CONTACT`
+/ `ORG_FOOTER`).
+
 ## Admin-configurable per meeting
 
 - **Title, description, location name, venue**
@@ -186,11 +215,10 @@ server.js              Express app: security middleware, routing, website + API
 src/
   config.js            Env + auto-generated persistent secrets
   store/
-    index.js           Backend selector (DB_BACKEND)
-    sqlite.js          SQLite implementation of the data-store contract
-    supabase.js        Supabase (Postgres) implementation of the same contract
+    index.js           Loads the Supabase store + .env
+    supabase.js        Supabase (Postgres) data-store implementation
+  ws-polyfill.js       Provides global WebSocket from `ws` on Node < 22
   notify.js            Resend (email) + Africa's Talking (SMS) senders + dispatch
-  db.js                node:sqlite schema (used by the sqlite store)
   auth.js              Password hashing, signed sessions, CSRF, middleware
   geo.js               Haversine + authoritative geofence evaluation
   validate.js          Field-definition and submission validation

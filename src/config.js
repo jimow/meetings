@@ -56,7 +56,6 @@ const config = {
   // null unless BASE_URL was explicitly provided.
   explicitBaseUrl,
   dataDir: DATA_DIR,
-  dbPath: path.join(DATA_DIR, 'meeting-signs.db'),
   sessionSecret: process.env.SESSION_SECRET || secrets.sessionSecret,
   // Session lifetime for admins.
   sessionTtlMs: parseInt(process.env.SESSION_TTL_HOURS || '12', 10) * 60 * 60 * 1000,

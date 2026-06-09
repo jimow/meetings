@@ -47,6 +47,7 @@ app.use(auth.loadSession);
 
 // --- API routes ----------------------------------------------------------
 app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/users', require('./src/routes/users'));
 app.use('/api/branding', require('./src/routes/branding').router);
 app.use('/api/meetings', require('./src/routes/meetings'));
 app.use('/api/public', require('./src/routes/signin'));
@@ -104,19 +105,12 @@ setInterval(() => {
   const server = app.listen(config.port, () => {
     console.log(`\n  Meeting Signs running`);
     console.log(`  ───────────────────────────────────────────`);
-    console.log(`  DATA BACKEND: ${store.backend.toUpperCase()}${store.backend === 'supabase' ? '  ✓ (registrations save to Supabase)' : ''}`);
-    if (store.backend === 'sqlite') {
-      console.log(`  ⚠  Using LOCAL SQLite (data/meeting-signs.db).`);
-      console.log(`     Registrations are NOT in Supabase. To use Supabase, set in .env:`);
-      console.log(`       DB_BACKEND=supabase`);
-      console.log(`       SUPABASE_URL=...   SUPABASE_SERVICE_ROLE_KEY=...`);
-      console.log(`     then run supabase/schema.sql and restart.`);
-    }
+    console.log(`  DATA BACKEND: SUPABASE  ✓`);
     console.log(`  ───────────────────────────────────────────`);
     console.log(`  Website: ${config.baseUrl}/`);
     console.log(`  Admin:   ${config.baseUrl}/admin`);
     console.log(`  Health:  ${config.baseUrl}/api/health`);
-    if (!config.isProd) console.log(`  (dev mode — set NODE_ENV=production and BASE_URL for deployment)\n`);
+    if (!config.isProd) console.log(`  (dev mode — set NODE_ENV=production for deployment)\n`);
   });
 
   process.on('SIGTERM', () => server.close(() => process.exit(0)));

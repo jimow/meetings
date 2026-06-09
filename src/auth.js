@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const store = require('./store');
 const config = require('./config');
-const { randomId, safeEqual, clientIp } = require('./util');
+const { randomId, safeEqual, clientIp, isAdmin } = require('./util');
 
 const COOKIE_NAME = 'msid';
 const BCRYPT_ROUNDS = 12;
@@ -93,6 +93,13 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// Super-admin only (role admin/owner) — sees all data + manages users.
+function requireSuperAdmin(req, res, next) {
+  if (!req.admin) return res.status(401).json({ error: 'authentication_required' });
+  if (!isAdmin(req.admin)) return res.status(403).json({ error: 'admin_only' });
+  next();
+}
+
 // Double-submit CSRF: state-changing admin requests must echo the session's
 // CSRF token in the X-CSRF-Token header. The token is only obtainable by the
 // authenticated client (via /api/auth/me), and the cookie is SameSite=strict.
@@ -120,6 +127,7 @@ module.exports = {
   clearSessionCookie,
   loadSession,
   requireAdmin,
+  requireSuperAdmin,
   requireCsrf,
   cleanupExpiredSessions,
 };

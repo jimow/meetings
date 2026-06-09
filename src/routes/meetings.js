@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const store = require('../store');
 const config = require('../config');
 const auth = require('../auth');
-const { randomId, uniqueSlug, clientIp, audit, publicBaseUrl } = require('../util');
+const { randomId, uniqueSlug, clientIp, audit, publicBaseUrl, isAdmin } = require('../util');
 const { normalizeFields, asString } = require('../validate');
 const { isValidLatLng } = require('../geo');
 const { generatePdf, generateDocx } = require('../docgen');
@@ -18,10 +18,19 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 
 function meetingUrl(slug, baseUrl) { return `${baseUrl}/m/${slug}`; }
 
+// Fetch a meeting the actor is allowed to act on: admins → any; users → own.
+async function getMeetingForActor(id, actor) {
+  const m = await store.getMeetingById(id);
+  if (!m) return null;
+  if (isAdmin(actor) || m.owner_id === actor.id) return m;
+  return null;
+}
+
 function publicShape(m, baseUrl) {
   return {
     id: m.id,
     slug: m.slug,
+    ownerId: m.owner_id,
     title: m.title,
     description: m.description,
     locationName: m.location_name,
@@ -118,12 +127,28 @@ async function parseMeetingInput(body, existing) {
 // --- List ----------------------------------------------------------------
 router.get('/', wrap(async (req, res) => {
   const baseUrl = publicBaseUrl(req);
-  const rows = await store.listMeetingsByOwner(req.admin.id);
+  const admin = isAdmin(req.admin);
+
+  const rows = admin ? await store.listAllMeetings() : await store.listMeetingsByOwner(req.admin.id);
+
+  // For admins, attach each meeting's host (owner) name/email.
+  let ownerMap = {};
+  if (admin) {
+    for (const a of await store.listAdmins()) ownerMap[a.id] = a;
+  }
+
   const withCounts = [];
   for (const m of rows) {
-    withCounts.push({ ...publicShape(m, baseUrl), signinCount: await store.countSignins(m.id) });
+    const shape = { ...publicShape(m, baseUrl), signinCount: await store.countSignins(m.id) };
+    if (admin) {
+      const o = ownerMap[m.owner_id];
+      shape.ownerName = o ? (o.name || o.email) : '(unknown)';
+      shape.ownerEmail = o ? o.email : '';
+      shape.isOwn = m.owner_id === req.admin.id;
+    }
+    withCounts.push(shape);
   }
-  res.json({ meetings: withCounts });
+  res.json({ meetings: withCounts, scope: admin ? 'all' : 'own', role: admin ? 'admin' : 'user' });
 }));
 
 // --- Create --------------------------------------------------------------
@@ -148,14 +173,14 @@ router.post('/', auth.requireCsrf, wrap(async (req, res) => {
 
 // --- Read ----------------------------------------------------------------
 router.get('/:id', wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   res.json({ meeting: publicShape(m, publicBaseUrl(req)) });
 }));
 
 // --- Update --------------------------------------------------------------
 router.put('/:id', auth.requireCsrf, wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
 
   const parsed = await parseMeetingInput(req.body || {}, m);
@@ -174,7 +199,7 @@ router.put('/:id', auth.requireCsrf, wrap(async (req, res) => {
 
 // --- Quick open/close toggle --------------------------------------------
 router.post('/:id/toggle', auth.requireCsrf, wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   const next = m.is_open ? 0 : 1;
   await store.setMeetingOpen(m.id, next, Date.now());
@@ -184,7 +209,7 @@ router.post('/:id/toggle', auth.requireCsrf, wrap(async (req, res) => {
 
 // --- Delete --------------------------------------------------------------
 router.delete('/:id', auth.requireCsrf, wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   await store.deleteMeeting(m.id);
   audit('meeting.delete', { actor: req.admin.id, target: m.id, ip: clientIp(req) });
@@ -193,7 +218,7 @@ router.delete('/:id', auth.requireCsrf, wrap(async (req, res) => {
 
 // --- QR code (PNG) -------------------------------------------------------
 router.get('/:id/qr.png', wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   const png = await QRCode.toBuffer(meetingUrl(m.slug, publicBaseUrl(req)), {
     errorCorrectionLevel: 'M', margin: 2, width: 512, color: { dark: '#0f172a', light: '#ffffff' },
@@ -203,7 +228,7 @@ router.get('/:id/qr.png', wrap(async (req, res) => {
 
 // --- Sign-ins list -------------------------------------------------------
 router.get('/:id/signins', wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   const rows = await store.listSignins(m.id);
   const signins = rows.map((r) => ({
@@ -223,7 +248,7 @@ router.get('/:id/signins', wrap(async (req, res) => {
 
 // --- Delete a single sign-in --------------------------------------------
 router.delete('/:id/signins/:signinId', auth.requireCsrf, wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   await store.deleteSignin(req.params.signinId, m.id);
   res.json({ ok: true });
@@ -238,7 +263,7 @@ function csvCell(v) {
 }
 
 router.get('/:id/export.csv', wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   const fields = JSON.parse(m.fields_json);
   const rows = await store.listSigninsAsc(m.id);
@@ -271,24 +296,33 @@ function safeFileName(m) {
   return (m.title.replace(/[^a-z0-9]+/gi, '_').slice(0, 40) || 'meeting') + '_signins';
 }
 
+// Branding + host details for a meeting's documents: always use the MEETING
+// OWNER's letterhead (so a sheet looks the same whether the owner or an admin
+// exports it), and include the host's name in the header.
+async function documentContext(m) {
+  const branding = await store.getBranding(m.owner_id);
+  const owner = await store.getAdminById(m.owner_id);
+  return { branding, opts: { hostName: owner ? (owner.name || owner.email) : '' } };
+}
+
 // --- PDF export (branded) ------------------------------------------------
 router.get('/:id/export.pdf', wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   const signins = await store.listSigninsAsc(m.id);
-  const branding = await store.getBranding(req.admin.id);
+  const { branding, opts } = await documentContext(m);
   res.set('Content-Type', 'application/pdf');
   res.set('Content-Disposition', `attachment; filename="${safeFileName(m)}.pdf"`);
-  generatePdf(m, signins, branding, res);
+  generatePdf(m, signins, branding, res, opts);
 }));
 
 // --- Word / DOCX export (branded) ---------------------------------------
 router.get('/:id/export.docx', wrap(async (req, res) => {
-  const m = await store.getOwnedMeeting(req.params.id, req.admin.id);
+  const m = await getMeetingForActor(req.params.id, req.admin);
   if (!m) return res.status(404).json({ error: 'not_found' });
   const signins = await store.listSigninsAsc(m.id);
-  const branding = await store.getBranding(req.admin.id);
-  const buf = await generateDocx(m, signins, branding);
+  const { branding, opts } = await documentContext(m);
+  const buf = await generateDocx(m, signins, branding, opts);
   res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.set('Content-Disposition', `attachment; filename="${safeFileName(m)}.docx"`);
   res.send(buf);

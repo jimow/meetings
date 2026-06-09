@@ -34,14 +34,16 @@
         </div>
         <button class="btn btn-block" id="auth-submit" type="submit">Sign in</button>
       </form>
+      <p class="small center hidden" id="auth-toggle" style="margin-top:1rem"></p>
     </div>
   </div>
 
   <!-- LIST -->
   <div id="view-list" class="container hidden">
     <div class="spread">
-      <h1>Your meetings</h1>
+      <h1 id="list-title">Your meetings</h1>
       <div class="row">
+        <button id="users-btn" class="btn btn-ghost hidden">👥 Users</button>
         <button id="branding-btn" class="btn btn-ghost">🏢 Branding</button>
         <button id="new-meeting-btn">+ New meeting</button>
       </div>
@@ -59,12 +61,58 @@
     </div>
   </div>
 
+  <!-- USERS (admin only) -->
+  <div id="view-users" class="container hidden">
+    <a href="#" id="users-back" class="small">← Back to meetings</a>
+    <div class="spread">
+      <h1>Users &amp; hosts</h1>
+    </div>
+    <p class="muted small">Each user sees only the meetings they create. Admins see all meetings and manage users.</p>
+    <div id="users-banner" class="banner hidden"></div>
+
+    <div class="card">
+      <h2>Add a user</h2>
+      <form id="user-form">
+        <div class="row">
+          <div class="field grow" style="flex:1"><label for="nu-name">Name</label><input type="text" id="nu-name" placeholder="Jane Doe" /></div>
+          <div class="field grow" style="flex:1"><label for="nu-email">Email</label><input type="email" id="nu-email" placeholder="jane@mandera.go.ke" required /></div>
+        </div>
+        <div class="row">
+          <div class="field grow" style="flex:1"><label for="nu-pass">Temporary password</label><input type="text" id="nu-pass" autocomplete="off" placeholder="min 10 characters" required /></div>
+          <div class="field grow" style="flex:1"><label for="nu-role">Role</label>
+            <select id="nu-role"><option value="user">User (sees only own meetings)</option><option value="admin">Admin (sees all + manages users)</option></select>
+          </div>
+        </div>
+        <button class="btn" type="submit">Add user</button>
+        <span class="hint">Share the email + temporary password with them; they can change it after logging in.</span>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>All users</h2>
+      <div id="users-list" class="table-wrap"></div>
+    </div>
+  </div>
+
   <!-- BRANDING -->
   <div id="view-branding" class="container-narrow hidden">
     <a href="#" id="branding-back" class="small">← Back to meetings</a>
-    <h1>Organization branding</h1>
-    <p class="muted small">This appears as the header on your exported PDF and Word attendance sheets.</p>
+    <h1>Branding &amp; sign-in sheet header</h1>
+    <p class="muted small">These details form the header of your exported PDF and Word attendance sheets. Each host's sheets use their own branding.</p>
     <div id="branding-banner" class="banner hidden"></div>
+
+    <div class="card" style="background:#f8fafc">
+      <h3 style="margin-top:0">What appears on the sign-in sheet document</h3>
+      <ul class="small muted" style="margin:0 0 0 1rem; padding:0">
+        <li><strong>Logo</strong> — top-left of every page</li>
+        <li><strong>Organization name</strong>, <strong>address</strong> and <strong>contact line</strong> — the letterhead</li>
+        <li><strong>Document title</strong> — “Attendance / Sign-In Sheet”</li>
+        <li><strong>Meeting</strong>, <strong>Venue</strong>, <strong>Date</strong> and <strong>Organizer / Host</strong> (your name)</li>
+        <li><strong>Summary</strong> — total attendees, within-geofence count, generated timestamp</li>
+        <li><strong>Attendee table</strong> — your configured fields + sign-in time + location result</li>
+        <li><strong>Footer</strong> — your footer text + page numbers, on every page</li>
+      </ul>
+    </div>
 
     <div class="card stack">
       <div class="field">

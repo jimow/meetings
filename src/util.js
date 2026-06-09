@@ -45,6 +45,15 @@ function clientIp(req) {
   return req.ip || req.connection?.remoteAddress || null;
 }
 
+// --- Roles ---------------------------------------------------------------
+// 'admin'  : super-admin — sees ALL meetings + manages users.
+// 'user'   : standard host — sees only the meetings they created.
+// 'owner'  : legacy alias for the original bootstrap account == admin.
+const ADMIN_ROLES = ['admin', 'owner'];
+function isAdmin(actor) {
+  return !!actor && ADMIN_ROLES.includes(actor.role);
+}
+
 // Public origin for share links / QR codes.
 //  - If BASE_URL is explicitly configured, always use it (authoritative).
 //  - Otherwise derive from the incoming request: real domain + scheme, honoring
@@ -72,4 +81,4 @@ function audit(action, { actor = null, target = null, detail = null, ip = null }
   })).catch(() => {});
 }
 
-module.exports = { randomId, randomSlug, uniqueSlug, safeEqual, clientIp, publicBaseUrl, audit };
+module.exports = { randomId, randomSlug, uniqueSlug, safeEqual, clientIp, publicBaseUrl, isAdmin, audit };

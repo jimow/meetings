@@ -15,7 +15,14 @@
       "Bash(node -e \"console.log\\('Selected backend:', require\\('./src/store'\\).backend\\)\")",
       "Bash(BASE_URL='' node -e ' *)",
       "Bash(BASE_URL=https://attendance.mandera.go.ke node -e ' *)",
-      "Bash(node -e \"const fs=require\\('fs'\\);const l=fs.readFileSync\\('.env','utf8'\\).split\\(/\\\\r?\\\\n/\\).find\\(x=>/BASE_URL/i.test\\(x\\)\\);console.log\\('current BASE_URL line:', l\\)\")"
+      "Bash(node -e \"const fs=require\\('fs'\\);const l=fs.readFileSync\\('.env','utf8'\\).split\\(/\\\\r?\\\\n/\\).find\\(x=>/BASE_URL/i.test\\(x\\)\\);console.log\\('current BASE_URL line:', l\\)\")",
+      "Bash(python -c \"import bcrypt; print\\('py-bcrypt ok'\\)\")",
+      "Bash(node -e \"try{require\\('bcryptjs'\\);console.log\\('bcryptjs ok'\\)}catch\\(e\\){try{require\\('bcrypt'\\);console.log\\('bcrypt ok'\\)}catch\\(e2\\){console.log\\('no node bcrypt'\\)}}\")",
+      "Bash(node -e \"const b=require\\('bcryptjs'\\); const h=b.hashSync\\('Huska@1120', b.genSaltSync\\(12\\)\\); console.log\\(h\\); console.log\\('verify:', b.compareSync\\('Huska@1120', h\\)\\);\")",
+      "Bash(node scripts/reset-password.js)",
+      "Bash(DB_BACKEND=sqlite node scripts/reset-password.js)",
+      "Bash(node _itest.js)",
+      "Bash(node -e \"require\\('./src/config'\\); require\\('./src/store'\\).listAdmins\\(\\).then\\(a=>{a.forEach\\(x=>console.log\\(' -',x.email,'\\('+x.role+'\\)'\\)\\); const leaked=a.filter\\(x=>x.email.startsWith\\('zz_'\\)\\); console.log\\(leaked.length?\\('LEAKED: '+leaked.length\\):'no leftover test users'\\);}\\)\")"
     ]
   }
 }
