@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin · Meeting Signs</title>
+  <link rel="stylesheet" href="/static/vendor/leaflet.css" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -48,6 +49,7 @@
         <button id="new-meeting-btn">+ New meeting</button>
       </div>
     </div>
+    <div id="list-summary" class="stat-grid" style="margin-top:1rem"></div>
     <div id="list-empty" class="card center hidden">
       <p class="muted">No meetings yet. Create your first sign-in sheet.</p>
       <button id="new-meeting-btn2">+ New meeting</button>
@@ -185,17 +187,22 @@
         </div>
         <p class="muted small">Attendees outside the radius are blocked from signing in. The check runs on the server.</p>
         <div id="geofence-settings">
+          <div class="banner info small" style="margin-bottom:.5rem">
+            📍 <strong>Set the venue precisely.</strong> Drag the pin (or click the map) to the exact venue. Don't rely on “Use my current location” from a desktop/laptop — those estimate location from Wi-Fi/IP and can be off by hundreds of metres. On a phone <em>at the venue</em>, “Use my current location” is accurate.
+          </div>
+          <div id="ed-map" style="height:300px;border-radius:10px;border:1px solid var(--line);margin-bottom:.6rem;background:#eef3ef"></div>
           <div class="row">
             <div class="field grow" style="flex:1">
               <label for="ed-lat">Latitude</label>
-              <input type="text" id="ed-lat" placeholder="e.g. 37.7749" />
+              <input type="text" id="ed-lat" placeholder="e.g. 3.9366" />
             </div>
             <div class="field grow" style="flex:1">
               <label for="ed-lng">Longitude</label>
-              <input type="text" id="ed-lng" placeholder="e.g. -122.4194" />
+              <input type="text" id="ed-lng" placeholder="e.g. 41.8669" />
             </div>
           </div>
           <button type="button" id="use-location-btn" class="btn btn-ghost btn-sm">📍 Use my current location</button>
+          <button type="button" id="search-place-btn" class="btn btn-ghost btn-sm">🔎 Center map on coordinates</button>
           <span id="use-location-status" class="small muted"></span>
           <div class="row" style="margin-top:1rem">
             <div class="field grow" style="flex:1">
@@ -302,6 +309,11 @@
       </div>
     </div>
 
+    <div class="card" id="analytics-card">
+      <h2>📊 Attendance analytics</h2>
+      <div id="analytics-wrap"></div>
+    </div>
+
     <div class="card">
       <div class="spread">
         <h2>Sign-ins (<span id="signin-count">0</span>)</h2>
@@ -316,6 +328,7 @@
     </div>
   </div>
 
+  <script src="/static/vendor/leaflet.js"></script>
   <script src="/static/admin.js"></script>
 </body>
 </html>

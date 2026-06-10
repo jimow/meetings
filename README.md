@@ -15,7 +15,9 @@ Built with Node.js + Express. Runs on the built-in `node:sqlite` out of the box,
 - Configurable capture fields per meeting
 - Branded PDF, Word and CSV attendance exports (logo, org name, venue, dates)
 - **Resend** email + **Africa's Talking** SMS notifications on sign-in
-- Pluggable backend: **SQLite** (default) or **Supabase**
+- **Map-based venue picker** (drag-the-pin) so the geofence center is set accurately
+- **Attendance analytics** per meeting (timeline, geofence split, field breakdowns)
+- Supabase (Postgres) backend
 
 ---
 
@@ -115,6 +117,21 @@ fails a sign-in; failures are logged.
 
 ---
 
+## Setting the venue location accurately (important)
+
+The geofence is only as good as the **center point** you set for the meeting. In the
+meeting editor there is a **map**:
+
+- **Drag the pin** (or click the map) to the exact venue — this is the reliable way and
+  works from any device.
+- **"Use my current location"** is accurate **only on a phone physically at the venue**.
+  On a desktop/laptop it estimates from Wi-Fi/IP and can be **hundreds of metres off** —
+  the editor now **warns** when a captured location looks too rough to trust.
+- The circle on the map shows the allowed radius live as you change it.
+
+> If sign-ins are wrongly reported as "X metres away," the meeting's center was set from
+> an inaccurate source. Open the meeting, drag the pin to the real venue, and save.
+
 ## How the geofence works (and its limits)
 
 - Each meeting stores a center `lat/lng`, a `radius` (meters), and a
@@ -194,6 +211,20 @@ Every exported PDF / Word attendance sheet uses the **host's branding** (set on 
 Each host sets their own logo and details, and new accounts are pre-seeded with the
 County's default letterhead (configurable via `ORG_NAME` / `ORG_ADDRESS` / `ORG_CONTACT`
 / `ORG_FOOTER`).
+
+## Attendance analytics
+
+Open a meeting to see its **📊 Attendance analytics** (computed live from the sign-ins):
+
+- **Stat tiles** — total sign-ins, unique attendees, within-geofence count, flagged count,
+  time span (first→last), peak time, average distance.
+- **Sign-ins over time** — a timeline chart bucketed across the session.
+- **Location verification** — within-geofence vs outside/flagged split.
+- **Field breakdowns** — for every dropdown/checkbox field you configured (e.g. department,
+  designation), a bar chart of the responses.
+
+The meetings list also shows a summary bar (totals, open now, sign-ins, and — for admins —
+active hosts).
 
 ## Admin-configurable per meeting
 

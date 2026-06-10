@@ -142,6 +142,25 @@
     $('list-title').textContent = admin ? 'All meetings (admin view)' : 'Your meetings';
     $('users-btn').classList.toggle('hidden', !admin);
 
+    // Summary tiles
+    const totalSignins = meetings.reduce((a, m) => a + (m.signinCount || 0), 0);
+    const openCount = meetings.filter((m) => m.isOpen && m.status === 'active').length;
+    const sum = $('list-summary');
+    if (meetings.length) {
+      const tiles = [
+        { v: meetings.length, l: admin ? 'Meetings (all hosts)' : 'Your meetings' },
+        { v: openCount, l: 'Open now', cls: 'good' },
+        { v: totalSignins, l: 'Total sign-ins' },
+      ];
+      if (admin) {
+        const hosts = new Set(meetings.map((m) => m.ownerId)).size;
+        tiles.push({ v: hosts, l: 'Active hosts' });
+      }
+      sum.innerHTML = tiles.map((t) => `<div class="stat ${t.cls || ''}"><div class="v">${esc(t.v)}</div><div class="l">${esc(t.l)}</div></div>`).join('');
+    } else {
+      sum.innerHTML = '';
+    }
+
     const grid = $('meetings-grid');
     grid.innerHTML = '';
     $('list-empty').classList.toggle('hidden', meetings.length > 0);
@@ -367,12 +386,73 @@
       addFieldRow({ key: 'full_name', label: 'Full name', type: 'text', required: true });
       addFieldRow({ key: 'email', label: 'Email', type: 'email', required: true });
     }
-    toggleGeofenceSettings();
     show('view-editor');
+    toggleGeofenceSettings(); // shows map after the editor is visible (Leaflet needs size)
   }
 
   function toggleGeofenceSettings() {
-    $('geofence-settings').classList.toggle('hidden', !$('ed-geofence').checked);
+    const on = $('ed-geofence').checked;
+    $('geofence-settings').classList.toggle('hidden', !on);
+    if (on) ensureMap();
+  }
+
+  // --- Map picker (Leaflet) ------------------------------------------------
+  const DEFAULT_CENTER = [3.9366, 41.8669]; // Mandera town
+  const mapState = { map: null, marker: null, circle: null };
+
+  function writeLatLng(lat, lng) {
+    $('ed-lat').value = Number(lat).toFixed(6);
+    $('ed-lng').value = Number(lng).toFixed(6);
+  }
+  function currentRadius() {
+    const r = parseInt($('ed-radius').value, 10);
+    return Number.isFinite(r) ? Math.max(10, r) : 150;
+  }
+  function placePin(lat, lng, recenter) {
+    if (!mapState.map) return;
+    const ll = [lat, lng];
+    mapState.marker.setLatLng(ll);
+    mapState.circle.setLatLng(ll);
+    writeLatLng(lat, lng);
+    if (recenter) mapState.map.setView(ll, Math.max(mapState.map.getZoom(), 16));
+  }
+
+  function ensureMap() {
+    if (typeof L === 'undefined') return; // Leaflet failed to load
+    const lat = parseFloat($('ed-lat').value);
+    const lng = parseFloat($('ed-lng').value);
+    const hasPoint = Number.isFinite(lat) && Number.isFinite(lng);
+    const center = hasPoint ? [lat, lng] : DEFAULT_CENTER;
+
+    if (!mapState.map) {
+      const map = L.map('ed-map', { scrollWheelZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '© OpenStreetMap contributors',
+      }).addTo(map);
+      const pin = L.divIcon({
+        className: '', iconSize: [20, 20], iconAnchor: [10, 10],
+        html: '<div style="width:18px;height:18px;border-radius:50%;background:#0b6b3a;border:3px solid #fff;box-shadow:0 0 0 1.5px #0b6b3a"></div>',
+      });
+      const marker = L.marker(center, { draggable: true, icon: pin }).addTo(map);
+      const circle = L.circle(center, { radius: currentRadius(), color: '#0b6b3a', weight: 1, fillColor: '#0b6b3a', fillOpacity: 0.12 }).addTo(map);
+      marker.on('drag', () => { const p = marker.getLatLng(); circle.setLatLng(p); writeLatLng(p.lat, p.lng); });
+      marker.on('dragend', () => { const p = marker.getLatLng(); writeLatLng(p.lat, p.lng); $('use-location-status').textContent = ' Pin set manually.'; });
+      map.on('click', (e) => { placePin(e.latlng.lat, e.latlng.lng, false); $('use-location-status').textContent = ' Pin set from map.'; });
+      mapState.map = map; mapState.marker = marker; mapState.circle = circle;
+    }
+
+    mapState.marker.setLatLng(center);
+    mapState.circle.setLatLng(center).setRadius(currentRadius());
+    mapState.map.setView(center, hasPoint ? 17 : 13);
+    // Container may have just become visible — fix tile/sizing.
+    setTimeout(() => mapState.map && mapState.map.invalidateSize(), 120);
+  }
+
+  function centerMapOnInputs() {
+    const lat = parseFloat($('ed-lat').value), lng = parseFloat($('ed-lng').value);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) { $('use-location-status').textContent = ' Enter a valid latitude and longitude first.'; return; }
+    ensureMap();
+    placePin(lat, lng, true);
   }
 
   function useCurrentLocation() {
@@ -381,9 +461,14 @@
     status.textContent = ' Locating…';
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        $('ed-lat').value = pos.coords.latitude.toFixed(6);
-        $('ed-lng').value = pos.coords.longitude.toFixed(6);
-        status.textContent = ` Set (±${Math.round(pos.coords.accuracy)}m).`;
+        const acc = Math.round(pos.coords.accuracy);
+        ensureMap();
+        placePin(pos.coords.latitude, pos.coords.longitude, true);
+        if (acc > 75) {
+          status.innerHTML = ` <span style="color:#b45309">⚠ Captured ±${acc}m — too rough (likely a desktop/Wi-Fi estimate). Drag the pin to the exact venue, or capture from a phone at the venue.</span>`;
+        } else {
+          status.textContent = ` Location captured (±${acc}m). Fine-tune by dragging the pin if needed.`;
+        }
       },
       () => { status.textContent = ' Could not get location (permission denied?).'; },
       { enableHighAccuracy: true, timeout: 15000 }
@@ -550,8 +635,106 @@
     if (m.endsAt) meta.push('Closes ' + fmt(m.endsAt));
     $('detail-meta').innerHTML = meta.map(esc).join(' · ');
 
+    renderAnalytics(m, json.signins);
     renderSignins(m, json.signins, id);
     show('view-detail');
+  }
+
+  // --- Analytics -----------------------------------------------------------
+  function fmtHM(ts) { try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } }
+
+  function renderAnalytics(m, signins) {
+    const wrap = $('analytics-wrap');
+    if (!signins.length) {
+      wrap.innerHTML = '<p class="muted">No sign-ins yet — analytics will appear once people start signing in.</p>';
+      return;
+    }
+
+    const total = signins.length;
+    const within = signins.filter((s) => s.withinGeofence).length;
+    const flagged = signins.filter((s) => s.flagged).length;
+    const emails = new Set(signins.map((s) => (s.email || '').toLowerCase()).filter(Boolean));
+    const times = signins.map((s) => s.createdAt).sort((a, b) => a - b);
+    const first = times[0], last = times[times.length - 1];
+    const durMin = Math.round((last - first) / 60000);
+    const dists = signins.map((s) => s.distanceMeters).filter((d) => d != null);
+    const avgDist = dists.length ? Math.round(dists.reduce((a, b) => a + b, 0) / dists.length) : null;
+
+    // Timeline buckets
+    const span = Math.max(1, last - first);
+    let bucketMs = Math.max(60000, Math.ceil(span / 16));
+    const buckets = [];
+    for (let t = first; t <= last + 1; t += bucketMs) buckets.push({ t, c: 0 });
+    if (!buckets.length) buckets.push({ t: first, c: 0 });
+    signins.forEach((s) => {
+      let i = Math.floor((s.createdAt - first) / bucketMs);
+      if (i < 0) i = 0; if (i >= buckets.length) i = buckets.length - 1;
+      buckets[i].c++;
+    });
+    const maxC = Math.max(1, ...buckets.map((b) => b.c));
+    const peak = buckets.reduce((a, b) => (b.c > a.c ? b : a), buckets[0]);
+
+    const tiles = [
+      { v: total, l: 'Total sign-ins' },
+      emails.size ? { v: emails.size, l: 'Unique attendees' } : null,
+      m.geofenceEnabled ? { v: within, l: 'Within geofence', cls: 'good' } : null,
+      flagged ? { v: flagged, l: 'Flagged', cls: 'warn' } : null,
+      { v: durMin >= 60 ? (durMin / 60).toFixed(1) + 'h' : durMin + 'm', l: 'Span (first→last)' },
+      { v: fmtHM(peak.t), l: 'Peak time' },
+      avgDist != null ? { v: avgDist + 'm', l: 'Avg distance' } : null,
+    ].filter(Boolean);
+
+    let html = '<div class="stat-grid">';
+    tiles.forEach((t) => { html += `<div class="stat ${t.cls || ''}"><div class="v">${esc(t.v)}</div><div class="l">${esc(t.l)}</div></div>`; });
+    html += '</div>';
+
+    // Timeline sparkline
+    html += '<div class="chart"><h4>Sign-ins over time</h4><div class="spark">';
+    buckets.forEach((b) => {
+      const h = Math.round((b.c / maxC) * 100);
+      html += `<div class="col" style="height:${Math.max(2, h)}%" title="${fmtHM(b.t)} — ${b.c}"></div>`;
+    });
+    html += '</div><div class="spark-x">'
+      + `<span>${fmtHM(first)}</span><span style="text-align:center">${fmtHM(buckets[Math.floor(buckets.length / 2)].t)}</span><span style="text-align:right">${fmtHM(last)}</span>`
+      + '</div></div>';
+
+    // Geofence split
+    if (m.geofenceEnabled) {
+      html += '<div class="chart"><h4>Location verification</h4>';
+      html += barRow('Within geofence', within, total, '#16a34a');
+      html += barRow('Outside / flagged', total - within, total, '#dc2626');
+      html += '</div>';
+    }
+
+    // Field breakdowns (select + checkbox fields)
+    for (const f of m.fields) {
+      if (f.type === 'select') {
+        const counts = {};
+        signins.forEach((s) => { const v = s.data[f.key]; if (v) counts[v] = (counts[v] || 0) + 1; });
+        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        if (entries.length) {
+          html += `<div class="chart"><h4>${esc(f.label)}</h4>`;
+          entries.forEach(([k, c]) => { html += barRow(k, c, total); });
+          html += '</div>';
+        }
+      } else if (f.type === 'checkbox') {
+        const yes = signins.filter((s) => s.data[f.key] === true || s.data[f.key] === 'true').length;
+        html += `<div class="chart"><h4>${esc(f.label)}</h4>`;
+        html += barRow('Yes', yes, total, '#16a34a');
+        html += barRow('No', total - yes, total, '#94a3b8');
+        html += '</div>';
+      }
+    }
+
+    wrap.innerHTML = html;
+  }
+
+  function barRow(label, count, total, color) {
+    const pct = total ? Math.round((count / total) * 100) : 0;
+    const fill = color ? `style="width:${pct}%;background:${color}"` : `style="width:${pct}%"`;
+    return `<div class="bar-row"><span class="lab" title="${esc(label)}">${esc(label)}</span>`
+      + `<span class="track"><span class="fill" ${fill}></span></span>`
+      + `<span class="num">${count} · ${pct}%</span></div>`;
   }
 
   function renderSignins(m, signins, meetingId) {
@@ -605,6 +788,8 @@
     $('add-field-btn').onclick = () => addFieldRow();
     $('ed-geofence').addEventListener('change', toggleGeofenceSettings);
     $('use-location-btn').onclick = useCurrentLocation;
+    $('search-place-btn').onclick = centerMapOnInputs;
+    $('ed-radius').addEventListener('input', () => { if (mapState.circle) mapState.circle.setRadius(currentRadius()); });
     $('copy-link').onclick = async () => {
       const link = $('detail-link').value;
       try { await navigator.clipboard.writeText(link); $('copy-link').textContent = 'Copied!'; setTimeout(() => ($('copy-link').textContent = 'Copy'), 1500); }
